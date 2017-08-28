@@ -1,14 +1,14 @@
 use specs::{Component, Entities, Entity, FetchMut, Join, ReadStorage, System,
-            VecStorage};
+            VecStorage, WriteStorage};
 use std::mem::swap;
 use std::ptr::null_mut;
 
 use ::{Position};
 
 #[derive(Clone, Debug)]
-struct Bounds {
-    pos: Position,
-    size: f32,
+pub struct Bounds {
+    pub pos: Position,
+    pub size: f32,
 }
 
 impl Bounds {
@@ -37,6 +37,16 @@ impl Bounds {
 }
 
 impl Component for Bounds {
+    type Storage = VecStorage<Self>;
+}
+
+#[derive(Clone, Debug)]
+pub struct QuadtreeRef(*mut QuadtreeNode);
+
+unsafe impl Send for QuadtreeRef {}
+unsafe impl Sync for QuadtreeRef {}
+
+impl Component for QuadtreeRef {
     type Storage = VecStorage<Self>;
 }
 
@@ -268,17 +278,22 @@ impl<'a> Iterator for QuadtreeIterator<'a> {
 pub struct SysUpdateQuadtree;
 
 impl<'a> System<'a> for SysUpdateQuadtree {
-    type SystemData = (FetchMut<'a, Quadtree>,
+    type SystemData = (WriteStorage<'a, QuadtreeRef>,
+                       FetchMut<'a, Quadtree>,
                        Entities<'a>,
-                       ReadStorage<'a, Position>);
+                       ReadStorage<'a, Bounds>);
 
-    fn run(&mut self, (mut quadtree, entities, pos): Self::SystemData) {
+    fn run(
+        &mut self,
+        (mut refs, mut quadtree, entities, bounds): Self::SystemData
+    ) {
         let quadtree: &mut Quadtree = &mut *quadtree;
 
-        for (entity, pos) in (&*entities, &pos).join() {
+        for (entity, bounds) in (&*entities, &bounds).join() {
+            let half_size = bounds.size * 0.5;
             println!("gotta update entity {:?} at {}, {}",
-                     entity, pos.x, pos.y);
-            // TODO
+                     entity,
+                     bounds.pos.x + half_size, bounds.pos.y + half_size);
         }
     }
 }
