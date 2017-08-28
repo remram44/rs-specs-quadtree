@@ -128,7 +128,7 @@ impl QuadtreeNode {
     }
 
     pub fn add(&mut self, entity: Entity, bounds: Bounds) {
-        if self.members.len() < 4 {
+        if self.members.len() < 4 || !self.children.is_empty() {
             self.members.push((entity, bounds.clone()));
         } else {
             // The node doesn't have the capacity to hold the entity
