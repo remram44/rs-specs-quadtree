@@ -26,8 +26,11 @@ impl<'a> System<'a> for SysUpdatePositions {
 
     fn run(&mut self, (mut pos, vel, quadtree): Self::SystemData) {
         for (pos, vel) in (&mut pos, &vel).join() {
+            let (old_x, old_y) = (pos.x, pos.y);
             pos.x += vel.x;
             pos.y += vel.y;
+            println!("Move: {}, {} -> {}, {}",
+                     old_x, old_y, pos.x, pos.y);
         }
     }
 }
@@ -56,6 +59,12 @@ fn main() {
         .add(SysUpdatePositions, "update_positions", &[])
         // Make quadtree update depend on position update
         .add(SysUpdateQuadtree, "update_quadtree", &["update_positions"])
+        .build();
+
+    // Create test entities
+    world.create_entity()
+        .with(Position { x: 0.0, y: 0.0 })
+        .with(Vel { x: 2.0, y: 1.0 })
         .build();
 
     // Run systems

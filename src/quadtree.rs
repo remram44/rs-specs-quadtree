@@ -286,6 +286,8 @@ impl<'a> System<'a> for SysUpdateQuadtree {
         let quadtree: &mut Quadtree = &mut *quadtree;
 
         for (entity, pos) in (&*entities, &pos).join() {
+            println!("gotta update entity {:?} at {}, {}",
+                     entity, pos.x, pos.y);
             // TODO
         }
     }
