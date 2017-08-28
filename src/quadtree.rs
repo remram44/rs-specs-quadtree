@@ -335,6 +335,10 @@ impl<'a> System<'a> for SysUpdateQuadtree {
                         let better_child = node.find_node_mut(bounds);
                         let better_ptr: *const QuadtreeNode = better_child;
                         if better_ptr != ptr {
+                            println!("Moving it to children node {}, {}, {}",
+                                     better_child.bounds.pos.x,
+                                     better_child.bounds.pos.y,
+                                     better_child.bounds.size);
                             better_child.add(entity, bounds.clone());
                             true
                         } else {
@@ -343,17 +347,29 @@ impl<'a> System<'a> for SysUpdateQuadtree {
                     } {
                         // We defer the remove call after the borrow ends
                         node.remove(entity);
+                    } else {
+                        println!("Still in best node {}, {}, {}",
+                                 node.bounds.pos.x,
+                                 node.bounds.pos.y,
+                                 node.bounds.size);
                     }
                 } else {
                     // Find the new correct position for this entity
                     node.remove(entity);
-                    quadtree.top.find_node_mut(bounds)
-                        .add(entity, bounds.clone());
+                    let new_node = quadtree.top.find_node_mut(bounds);
+                    println!("Moving it to node {}, {}, {}",
+                             new_node.bounds.pos.x,
+                             new_node.bounds.pos.y,
+                             new_node.bounds.size);
+                    new_node.add(entity, bounds.clone());
                 }
             // If it's not in the quadtree yet, just add it
             } else {
-                quadtree.top.find_node_mut(bounds)
-                    .add(entity, bounds.clone());
+                let node = quadtree.top.find_node_mut(bounds);
+                println!("Not yet in quadtree, adding to node {}, {}, {}",
+                         node.bounds.pos.x, node.bounds.pos.y,
+                         node.bounds.size);
+                node.add(entity, bounds.clone());
             }
         }
     }
