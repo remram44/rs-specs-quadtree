@@ -55,7 +55,7 @@ struct QuadtreeNode {
     bounds: Bounds,
     parent: *mut QuadtreeNode,
     children: Vec<QuadtreeNode>,
-    members: Vec<(Entity, Position)>,
+    members: Vec<(Entity, Bounds)>,
 }
 
 unsafe impl Send for QuadtreeNode {}
@@ -71,40 +71,60 @@ impl QuadtreeNode {
         None
     }
 
-    fn find_node(&self, pos: &Position) -> &QuadtreeNode {
+    fn find_node(&self, bounds: &Bounds) -> &QuadtreeNode {
         if !self.children.is_empty() {
-            return self;
-        } else {
             debug_assert!(self.children.len() == 4);
-            debug_assert!(self.members.is_empty());
             let half_size = self.bounds.size * 0.5;
             let mut idx = 0;
-            if self.bounds.pos.x + half_size < pos.x {
+            let mid_x = self.bounds.pos.x + half_size;
+            // It fits on the right half
+            if mid_x < bounds.pos.x {
                 idx += 1;
+            // It doesn't fit on either half
+            } else if mid_x < bounds.pos.x + bounds.size {
+                return self;
+            // Else, it fits on the left half
             }
-            if self.bounds.pos.y + half_size < pos.y {
+            let mid_y = self.bounds.pos.y + half_size;
+            // It fits on the top half
+            if mid_y < bounds.pos.y {
                 idx += 2;
+            // It doesn't fit on either half
+            } else if mid_y < bounds.pos.y + bounds.size {
+                return self;
+            // Else, it fits on the botton half
             }
-            self.children[idx].find_node(pos)
+            return self.children[idx].find_node(bounds);
         }
+        self
     }
 
-    fn find_node_mut(&mut self, pos: &Position) -> &mut QuadtreeNode {
+    fn find_node_mut(&mut self, bounds: &Bounds) -> &mut QuadtreeNode {
         if !self.children.is_empty() {
-            return self;
-        } else {
             debug_assert!(self.children.len() == 4);
-            debug_assert!(self.members.is_empty());
             let half_size = self.bounds.size * 0.5;
             let mut idx = 0;
-            if self.bounds.pos.x + half_size < pos.x {
+            let mid_x = self.bounds.pos.x + half_size;
+            // It fits on the right half
+            if mid_x < bounds.pos.x {
                 idx += 1;
+            // It doesn't fit on either half
+            } else if mid_x < bounds.pos.x + bounds.size {
+                return self;
+            // Else, it fits on the left half
             }
-            if self.bounds.pos.y + half_size < pos.y {
+            let mid_y = self.bounds.pos.y + half_size;
+            // It fits on the top half
+            if mid_y < bounds.pos.y {
                 idx += 2;
+            // It doesn't fit on either half
+            } else if mid_y < bounds.pos.y + bounds.size {
+                return self;
+            // Else, it fits on the botton half
             }
-            self.children[idx].find_node_mut(pos)
+            return self.children[idx].find_node_mut(bounds);
         }
+        self
     }
 }
 
@@ -128,11 +148,11 @@ impl Quadtree {
         }
     }
 
-    pub fn add(&mut self, entity: Entity, pos: &Position) {
-        let node = self.top.find_node_mut(pos);
+    pub fn add(&mut self, entity: Entity, bounds: &Bounds) {
+        let node = self.top.find_node_mut(bounds);
         if node.find(&entity).is_none() {
             if node.members.len() < 4 {
-                node.members.push((entity, pos.clone()));
+                node.members.push((entity, bounds.clone()));
             } else {
                 // The node doesn't have the capacity to hold the entity
                 // We have to split it
@@ -147,23 +167,23 @@ impl Quadtree {
                         members: Vec::new(),
                     });
                 }
-                for (entity, pos) in members {
+                for (entity, bounds) in members {
                     let half_size = node.bounds.size * 0.5;
                     let mut idx = 0;
-                    if node.bounds.pos.x + half_size < pos.x {
+                    if node.bounds.pos.x + half_size < bounds.pos.x {
                         idx += 1;
                     }
-                    if node.bounds.pos.y + half_size < pos.y {
+                    if node.bounds.pos.y + half_size < bounds.pos.y {
                         idx += 2;
                     }
-                    node.children[idx].members.push((entity, pos));
+                    node.children[idx].members.push((entity, bounds));
                 }
             }
         }
     }
 
-    pub fn remove(&mut self, entity: Entity, pos: &Position) {
-        let node = self.top.find_node_mut(pos);
+    pub fn remove(&mut self, entity: Entity, bounds: &Bounds) {
+        let node = self.top.find_node_mut(bounds);
         if let Some(idx) = node.find(&entity) {
             node.members.swap_remove(idx);
 
@@ -211,7 +231,7 @@ pub struct QuadtreeIterator<'a> {
 }
 
 impl<'a> Iterator for QuadtreeIterator<'a> {
-    type Item = (&'a Entity, &'a Position);
+    type Item = (&'a Entity, &'a Bounds);
 
     fn next(&mut self) -> Option<Self::Item> {
         // Try to read next item
@@ -247,8 +267,7 @@ impl<'a> Iterator for QuadtreeIterator<'a> {
                 } else if !self.node.members.is_empty() {
                     self.idx = 0;
                     break;
-                } else {
-                    // If empty leaf, we keep found=false and we'll move up
+                // If empty leaf, we keep found=false and we'll move up
                 }
 
                 // Didn't find a node, move up
@@ -269,9 +288,9 @@ impl<'a> Iterator for QuadtreeIterator<'a> {
 
         // Yield next item
         // If there are more items in the current node, yield them
-        let &(ref ent, ref pos) = item;
+        let &(ref ent, ref bounds) = item;
         self.idx += 1;
-        Some((ent, pos))
+        Some((ent, bounds))
     }
 }
 
