@@ -2,8 +2,8 @@ extern crate specs;
 
 mod quadtree;
 
-use specs::{Component, DispatcherBuilder, Join, ReadStorage,
-            System, VecStorage, World, WriteStorage, Fetch};
+use specs::{Component, DispatcherBuilder, Fetch, Join, ReadStorage,
+            System, VecStorage, World, WriteStorage};
 
 use quadtree::{Quadtree, SysUpdateQuadtree};
 
